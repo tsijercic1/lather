@@ -1,4 +1,4 @@
-import type { Point2D } from '$lib/server/common/model';
+import type { Point2D } from '$lib/common/model/index';
 
 export type Line2D = {
 	start: Point2D;

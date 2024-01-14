@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
-import { type ImplicitLine2D, type Point2D, Side } from '$lib/server/common/model';
-import offsetPolyline, { getNormalImplicitLineThroughPoint } from '$lib/server/common/util/offset-polyline';
+import { type ImplicitLine2D, type Point2D, Side } from '$lib/common/model';
+import offsetPolyline, { getNormalImplicitLineThroughPoint } from '$lib/common/util/offset-polyline';
 
 test('Normal line through origin', () => {
 	const line: ImplicitLine2D = { a: 1, b: 0, c: 0 };

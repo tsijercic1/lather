@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest';
-import { threePointOrientation } from '$lib/server/common/util/index';
-import { ThreePointOrientation } from '$lib/server/common/model';
+import { threePointOrientation } from '$lib/common/util/index';
+import { ThreePointOrientation } from '$lib/common/model';
 
 test('Left orientation', () => {
 	const a = { x: 0, y: 0 };

@@ -1,5 +1,5 @@
-import { type ImplicitLine2D, type Line2D, type Point2D, Side } from '$lib/server/common/model';
-import { threePointOrientation } from '$lib/server/common/util/index';
+import { type ImplicitLine2D, type Line2D, type Point2D, Side } from '$lib/common/model';
+import { threePointOrientation } from '$lib/common/util/index';
 
 const offsetPolyline = (polyline: Point2D[], offset: number, side: Side): Point2D[] => {
 	const result = [offsetLine({ start: polyline[0], end: polyline[1] }, offset, side)];
