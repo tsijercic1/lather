@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest'
-import { readDXFFile } from '$lib/server/dxf';
+import { parseDXF } from '$lib/dxf';
+import fs from 'fs';
 
 function getLibPath(): string {
 	const libIndex = __dirname.indexOf('/lib')
@@ -9,6 +10,7 @@ function getLibPath(): string {
 test('Read sample DXF file', () => {
 	const examplePath: string = '/dxf-examples/example.dxf';
 	const filePath = getLibPath() + examplePath;
-	const dxfData = readDXFFile(filePath);
+	const fileContent = fs.readFileSync(filePath).toString();
+	const dxfData = parseDXF(fileContent);
 	expect(dxfData, "Must not be null").toBeTruthy();
 })
