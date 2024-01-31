@@ -1,8 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { type Point2D, Side } from '$lib/common/model';
+	import { type Point2D } from '$lib/common/model';
 	import { parseDXF } from '$lib/dxf';
-	import offsetPolyline, { findIntersections } from '$lib/common/util/offset-polyline';
+	import { generateGCode } from '$lib/common/util';
+	interface Line {
+		name: string;
+		points: Point2D[];
+	}
 
 	let width = 500;
 	let height = 500;
@@ -11,7 +15,37 @@
 	let scale = 1;
 	let isPanning = false;
 	let canvas: HTMLCanvasElement;
-	let lines: Point2D[][] = [];
+	let lines: Line[] = [];
+	let linesForPath = {
+		lines: [] as Line[],
+	};
+	let toolNumber = 4;
+	let feedRate = 4000;
+	let spindleSpeed = 9000;
+	let plungeRate = 1600;
+
+	const sortLines = (a: Line, b: Line) => {
+		// sort lines with starting point farthest from origin first by absolute value
+		const aX = a.points[0].x;
+		const bX = b.points[0].x;
+		if (Math.abs(aX) > Math.abs(bX)) {
+			return -1;
+		}
+		if (Math.abs(aX) < Math.abs(bX)) {
+			return 1;
+		}
+		return 0;
+	};
+
+	const updateLinesForPath = (line: Line) => {
+		if(!!linesForPath.lines.find(pat => pat.name === line.name)) {
+			// Remove if found
+			linesForPath.lines = linesForPath.lines.filter(pat => pat.name !== line.name)
+		} else {
+			linesForPath.lines = [...linesForPath.lines, line].sort(sortLines)
+		}
+		refresh();
+	};
 
 	onMount(() => {
 		const { innerWidth, innerHeight } = window;
@@ -64,7 +98,8 @@
 					return;
 				}
 
-				const polylines: Point2D[][] = [];
+				const polylines: Line[] = [];
+				let i = 0;
 				for (const entity of dxf.entities) {
 					if (entity.type === 'POLYLINE') {
 						const vertices = entity.vertices;
@@ -75,9 +110,10 @@
 								y: vertex.y
 							});
 						}
-						polylines.push(points);
-						const offsetLine = offsetPolyline(points, 10, Side.RIGHT);
-						polylines.push(offsetLine);
+						polylines.push({
+							name: "Line " + i++,
+							points: points
+						});
 					}
 				}
 				if (polylines.length === 0) {
@@ -109,12 +145,12 @@
 		drawPolyline(yAxe);
 	}
 
-	function drawPolyline(line: Point2D[]) {
+	function drawPolyline(line: Point2D[], color: string = 'black') {
 		const ctx = canvas.getContext('2d');
 		if (!ctx) {
 			throw new Error('Could not get canvas context');
 		}
-		ctx.strokeStyle = 'black';
+		ctx.strokeStyle = color;
 		ctx.lineWidth = 1;
 		ctx.beginPath();
 		for (let i = 0; i < line.length; i++) {
@@ -178,15 +214,11 @@
 
 	function drawState() {
 		for (const line of lines) {
-			drawPolyline(line);
-			const intersections = findIntersections(line);
-			// for (const intersection of intersections) {
-			// 	drawPoint(intersection.line1.start, 'blue');
-			// 	drawPoint(intersection.line1.end, 'blue');
-			// 	drawPoint(intersection.line2.start, 'green');
-			// 	drawPoint(intersection.line2.end, 'green');
-			// 	drawPoint(intersection);
-			// }
+			drawPolyline(line.points);
+			drawPoint(line.points[0], 'green');
+		}
+		for (const line of linesForPath.lines) {
+			drawPolyline(line.points, 'red');
 		}
 	}
 
@@ -218,6 +250,37 @@
 		drawState();
 	}
 
+	const generateCodeForPath = () => {
+		let linesToPath = [...linesForPath.lines];
+		// sort lines with starting point farthest from origin first by absolute value
+		linesToPath = linesToPath.sort((a, b) => {
+			const aX = a.points[0].x;
+			const bX = b.points[0].x;
+			if (Math.abs(aX) > Math.abs(bX)) {
+				return -1;
+			}
+			if (Math.abs(aX) < Math.abs(bX)) {
+				return 1;
+			}
+			return 0;
+		});
+		// reverse line points for odd lines
+		linesToPath = linesToPath.map((line, index) => {
+			if (index % 2 === 1) {
+				return {
+					name: line.name,
+					points: line.points.reverse()
+				};
+			}
+			return line;
+		});
+		const points = linesToPath.map(line => line.points).flat();
+		const gCode = generateGCode(points, toolNumber, feedRate, plungeRate, spindleSpeed);
+		console.log(gCode);
+
+		const uriContent = "data:application/octet-stream," + encodeURIComponent(gCode);
+		window.open(uriContent, 'gcode');
+	}
 
 </script>
 
@@ -231,6 +294,30 @@
 		on:mousemove={pan}
 	>
 	</canvas>
+	{#each lines.sort(sortLines) as pattern}
+		<label for={pattern.name}>
+			<input type="checkbox"
+						 id={pattern.name}
+						 value={pattern}
+						 checked={!!linesForPath.lines.find(pat => pat.name === pattern.name)}
+						 on:change={() => {updateLinesForPath(pattern)}}
+			/>{pattern.name}
+		</label>
+		<br/>
+	{/each}
+	<label for="tool_number">Tool number</label>
+	<input type="number" id="tool_number" bind:value={toolNumber} min="1" max="8" />
+	<br/>
+	<label for="feed_rate">Feed rate</label>
+	<input type="number" id="feed_rate" bind:value={feedRate} min="1" max="10000" />
+	<br/>
+	<label for="spindle_speed">Spindle speed</label>
+	<input type="number" id="spindle_speed" bind:value={spindleSpeed} min="1" max="10000" />
+	<br/>
+	<label for="plunge_rate">Plunge rate</label>
+	<input type="number" id="plunge_rate" bind:value={plungeRate} min="1" max="10000" />
+	<br/>
+	<button on:click={generateCodeForPath}>Generate GCode</button>
 </div>
 
 
