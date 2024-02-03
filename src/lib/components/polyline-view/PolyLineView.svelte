@@ -3,6 +3,7 @@
 	import { type Point2D } from '$lib/common/model';
 	import { parseDXF } from '$lib/dxf';
 	import { generateGCode } from '$lib/common/util';
+	import { type IPolylineEntity } from 'dxf-parser/dist/entities/polyline';
 	interface Line {
 		name: string;
 		points: Point2D[];
@@ -19,10 +20,11 @@
 	let linesForPath = {
 		lines: [] as Line[],
 	};
-	let toolNumber = 4;
-	let feedRate = 4000;
-	let spindleSpeed = 9000;
-	let plungeRate = 1600;
+	let toolNumber = 3;
+	let feedRate = 10000;
+	let spindleSpeed = 12000;
+	let mmPerRotation = 1;
+	let homeZ = 150;
 
 	const sortLines = (a: Line, b: Line) => {
 		// sort lines with starting point farthest from origin first by absolute value
@@ -38,7 +40,7 @@
 	};
 
 	const updateLinesForPath = (line: Line) => {
-		if(!!linesForPath.lines.find(pat => pat.name === line.name)) {
+		if(linesForPath.lines.find(pat => pat.name === line.name)) {
 			// Remove if found
 			linesForPath.lines = linesForPath.lines.filter(pat => pat.name !== line.name)
 		} else {
@@ -102,7 +104,8 @@
 				let i = 0;
 				for (const entity of dxf.entities) {
 					if (entity.type === 'POLYLINE') {
-						const vertices = entity.vertices;
+						const polyline: IPolylineEntity = <IPolylineEntity>entity
+						const vertices = polyline.vertices;
 						const points: Point2D[] = [];
 						for (const vertex of vertices) {
 							points.push({
@@ -275,7 +278,14 @@
 			return line;
 		});
 		const points = linesToPath.map(line => line.points).flat();
-		const gCode = generateGCode(points, toolNumber, feedRate, plungeRate, spindleSpeed);
+		const options = {
+			toolNumber,
+			feedRate,
+			spindleSpeed,
+			mmPerRotation,
+			homeZ,
+		};
+		const gCode = generateGCode(points, options);
 		console.log(gCode);
 
 		const uriContent = "data:application/octet-stream," + encodeURIComponent(gCode);
@@ -314,8 +324,11 @@
 	<label for="spindle_speed">Spindle speed</label>
 	<input type="number" id="spindle_speed" bind:value={spindleSpeed} min="1" max="10000" />
 	<br/>
-	<label for="plunge_rate">Plunge rate</label>
-	<input type="number" id="plunge_rate" bind:value={plungeRate} min="1" max="10000" />
+	<label for="mm_per_rotation">MM per Rotation</label>
+	<input type="number" id="mm_per_rotation" bind:value={mmPerRotation} min="0.1" max="10000" />
+	<br/>
+	<label for="home_z">Home Z</label>
+	<input type="number" id="home_z" bind:value={homeZ} min="0" max="300" />
 	<br/>
 	<button on:click={generateCodeForPath}>Generate GCode</button>
 </div>
