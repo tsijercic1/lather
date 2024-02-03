@@ -3,7 +3,7 @@
 	import { type Point2D } from '$lib/common/model';
 	import { parseDXF } from '$lib/dxf';
 	import { generateGCode } from '$lib/common/util';
-	import { type IPolylineEntity } from 'dxf-parser/dist/entities/polyline';
+	import type { IPolylineEntity } from 'dxf-parser';
 	interface Line {
 		name: string;
 		points: Point2D[];
