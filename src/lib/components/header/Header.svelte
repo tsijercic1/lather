@@ -2,7 +2,7 @@
 </script>
 
 <header>
-	<h1>Leather</h1>
+	<h1>Lather</h1>
 </header>
 
 <style>
